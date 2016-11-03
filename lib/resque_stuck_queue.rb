@@ -22,7 +22,7 @@ module Resque
       end
 
       def logger
-        @logger ||= (config[:logger] || StuckQueue::LOGGER)
+        @logger ||= config[:logger]
       end
 
       def redis
@@ -30,19 +30,11 @@ module Resque
       end
 
       def heartbeat_key_for(queue)
-        if config[:heartbeat_key]
-          "#{queue}:#{config[:heartbeat_key]}"
-        else
-          "#{queue}:#{HEARTBEAT_KEY}"
-        end
+        "#{queue}:#{config[:heartbeat_key]}"
       end
 
       def triggered_key_for(queue)
-        if config[:triggered_key]
-          "#{queue}:#{self.config[:triggered_key]}"
-        else
-          "#{queue}:#{TRIGGERED_KEY}"
-        end
+        "#{queue}:#{config[:triggered_key]}"
       end
 
       def heartbeat_keys
@@ -50,15 +42,11 @@ module Resque
       end
 
       def queues
-        @queues ||= (config[:queues] || [:app])
+        @queues ||= config[:queues]
       end
 
       def abort_on_exception
-        if !config[:abort_on_exception].nil?
-          config[:abort_on_exception] # allow overriding w false
-        else
-          true # default
-        end
+        config[:abort_on_exception]
       end
 
       def start_in_background
@@ -296,9 +284,9 @@ module Resque
 
       def wait_for_it(type)
         if type == :heartbeat_interval
-          sleep config[:heartbeat_interval] || HEARTBEAT_INTERVAL
+          sleep config[:heartbeat_interval]
         elsif type == :watcher_interval
-          sleep config[:watcher_interval]   || WATCHER_INTERVAL
+          sleep config[:watcher_interval]
         elsif type == :warn_interval
           sleep config[:warn_interval]
         else
@@ -307,7 +295,7 @@ module Resque
       end
 
       def max_wait_time
-        config[:trigger_timeout] || TRIGGER_TIMEOUT
+        config[:trigger_timeout]
       end
 
       def pretty_process_name

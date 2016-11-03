@@ -2,27 +2,18 @@ module Resque
   module StuckQueue
 
     require 'logger'
-    # defaults
-    HEARTBEAT_INTERVAL   = 5 * 60                   # send heartbeat job every 5 minutes
-    WATCHER_INTERVAL     = 5                        # check key is udpated every 5 seconds.
-
-    TRIGGER_TIMEOUT      = 60 * 60                  # trigger after an hour of lagtime.
-
-    # must be called by convention: type_handler
-    TRIGGERED_HANDLER    = proc { |queue_name, lag| Resque::StuckQueue::LOGGER.info("Shit gone bad with them queues...on #{queue_name}. Lag time is #{lag}") }
-    RECOVERED_HANDLER    = proc { |queue_name, lag| Resque::StuckQueue::LOGGER.info("recovered queue phew #{queue_name}. Lag time is #{lag}") }
-
-    LOGGER               = Logger.new($stdout)
-    HEARTBEAT_KEY        = "resque-stuck-queue"
-    TRIGGERED_KEY        = "resque-stuck-queue-last-triggered"
 
     class Config < Hash
+
+      # must be called by convention: type_handler
+      TRIGGERED_HANDLER    = proc { |queue_name, lag| Resque::StuckQueue::LOGGER.info("Shit gone bad with them queues...on #{queue_name}. Lag time is #{lag}") }
+      RECOVERED_HANDLER    = proc { |queue_name, lag| Resque::StuckQueue::LOGGER.info("recovered queue phew #{queue_name}. Lag time is #{lag}") }
 
       OPTIONS_DESCRIPTIONS = {
         :triggered_handler  => "set to what gets triggered when resque-stuck-queue will detect the latest heartbeat is older than the trigger_timeout time setting.\n\tExample:\n\tResque::StuckQueue.config[:triggered_handler] = proc { |queue_name, lagtime| send_email('queue \#{queue_name} isnt working, aaah the daemons') }",
         :recovered_handler  => "set to what gets triggered when resque-stuck-queue has triggered a problem, but then detects the queue went back down to functioning well again(it wont trigger again until it has recovered).\n\tExample:\n\tResque::StuckQueue.config[:recovered_handler] = proc { |queue_name, lagtime| send_email('phew, queue \#{queue_name} is ok') }",
         :heartbeat_interval => "set to how often to push the 'heartbeat' job which will refresh the latest working time.\n\tExample:\n\tResque::StuckQueue.config[:heartbeat_interval] = 5.minutes",
-        :watcher_interval            => "set to how often to check to see when the last time it worked was.\n\tExample:\n\tResque::StuckQueue.config[:watcher_interval] = 1.minute",
+        :watcher_interval   => "set to how often to check to see when the last time it worked was.\n\tExample:\n\tResque::StuckQueue.config[:watcher_interval] = 1.minute",
         :trigger_timeout    => "set to how much of a resque work lag you are willing to accept before being notified. note: take the :watcher_interval setting into account when setting this timeout.\n\tExample:\n\tResque::StuckQueue.config[:trigger_timeout] = 9.minutes",
         :warn_interval      => "optional: if set, it will continiously trigger/warn in spaces of this interval after first trigger. eg, as long as lagtime keeps on being above trigger_timeout/recover hasn't occured yet.",
         :redis              => "set the Redis StuckQueue will use. Either a Redis or Redis::Namespace instance.",
@@ -36,6 +27,23 @@ module Resque
       }
 
       OPTIONS = OPTIONS_DESCRIPTIONS.keys
+
+      DEFAULT_OPTIONS = {
+        :heartbeat_interval => 5 * 60,  # send heartbeat job every 5 minutes
+        :watcher_interval   => 5,       # check key is udpated every 5 seconds
+        :trigger_timeout    => 60 * 60, # trigger after an hour of lagtime
+        :triggered_handler  => TRIGGERED_HANDLER,
+        :recovered_handler  => RECOVERED_HANDLER,
+        :logger             => Logger.new($stdout),
+        :heartbeat_key      => 'resque-stuck-queue',
+        :triggered_key      => 'resque-stuck-queue-last-triggered',
+        :queues             => [:app],
+        :abort_on_exception => true,
+      }
+
+      def initialize(*args)
+        super(*args).merge! DEFAULT_OPTIONS
+      end
 
       def []=(k,v)
         validate_key_exists!(k)
