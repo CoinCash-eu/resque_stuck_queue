@@ -10,7 +10,7 @@ module Resque
           # if set by config[:redis] earlier before loading this lib.
           @redis = Resque::StuckQueue.redis || Redis::Namespace.new(namespace, :redis => Redis.new(:host => host, :port => port))
           @redis.set(keyname, new_time)
-          Resque::StuckQueue.logger.info "successfully updated key #{keyname} to #{new_time} at #{Time.now} for #{@redis.inspect}"
+          Resque::StuckQueue.logger.send Resque::StuckQueue.config[:log_level], "successfully updated key #{keyname} to #{new_time} at #{Time.now} for #{@redis.inspect}"
         end
 
       end

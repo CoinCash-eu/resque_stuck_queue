@@ -6,8 +6,8 @@ module Resque
     class Config < Hash
 
       # must be called by convention: type_handler
-      TRIGGERED_HANDLER    = proc { |queue_name, lag| Resque::StuckQueue::LOGGER.info("Shit gone bad with them queues...on #{queue_name}. Lag time is #{lag}") }
-      RECOVERED_HANDLER    = proc { |queue_name, lag| Resque::StuckQueue::LOGGER.info("recovered queue phew #{queue_name}. Lag time is #{lag}") }
+      TRIGGERED_HANDLER    = proc { |queue_name, lag| Resque::StuckQueue::DEFAULT_OPTIONS[:logger].send(Resque::StuckQueue[:config][:log_level], "Shit gone bad with them queues...on #{queue_name}. Lag time is #{lag}") }
+      RECOVERED_HANDLER    = proc { |queue_name, lag| Resque::StuckQueue::DEFAULT_OPTIONS[:logger].send(Resque::StuckQueue[:config][:log_level], "recovered queue phew #{queue_name}. Lag time is #{lag}") }
 
       OPTIONS_DESCRIPTIONS = {
         :triggered_handler  => "set to what gets triggered when resque-stuck-queue will detect the latest heartbeat is older than the trigger_timeout time setting.\n\tExample:\n\tResque::StuckQueue.config[:triggered_handler] = proc { |queue_name, lagtime| send_email('queue \#{queue_name} isnt working, aaah the daemons') }",
@@ -24,6 +24,7 @@ module Resque
         :abort_on_exception => "optional, if you want the resque-stuck-queue threads to explicitly raise, default is true",
         :heartbeat_job      => "optional, your own custom refreshing job. if you are using something other than resque",
         :enable_signals     => "optional, allow resque::stuck's signal_handlers which do mostly nothing at this point. possible future plan: log info, reopen log file, etc.",
+        :log_level          => "optional, set severity level of logging. Default is :info. Possible values: debug, info, warn, error, fatal, unknown",
       }
 
       OPTIONS = OPTIONS_DESCRIPTIONS.keys
@@ -39,6 +40,7 @@ module Resque
         :triggered_key      => 'resque-stuck-queue-last-triggered',
         :queues             => [:app],
         :abort_on_exception => true,
+        :log_level          => :info,
       }
 
       def initialize(*args)

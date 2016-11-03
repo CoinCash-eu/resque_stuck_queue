@@ -25,6 +25,10 @@ module Resque
         @logger ||= config[:logger]
       end
 
+      def log(*args)
+        logger.send config[:log_level], *args
+      end
+
       def redis
         @redis ||= config[:redis]
       end
@@ -80,7 +84,7 @@ module Resque
         # fo-eva.
         @threads.map(&:join)
 
-        logger.info("threads stopped")
+        log("threads stopped")
         @stopped = true
       end
 
@@ -90,11 +94,11 @@ module Resque
         while @stopped == false
           sleep 1
         end
-        logger.info("Stopped")
+        log("Stopped")
       end
 
       def force_stop!
-        logger.info("Force stopping")
+        log("Force stopping")
         @threads.map(&:kill)
         reset!
       end
@@ -121,25 +125,25 @@ module Resque
       def trigger_handler(queue_name, type)
         raise 'Must trigger either the recovered or triggered handler!' unless (type == :recovered || type == :triggered)
         handler_name = :"#{type}_handler"
-        logger.info("Triggering #{type} handler for #{queue_name} at #{Time.now}.")
+        log("Triggering #{type} handler for #{queue_name} at #{Time.now}.")
         (config[handler_name] || const_get(handler_name.upcase)).call(queue_name, lag_time(queue_name))
         manual_refresh(queue_name, type)
       rescue => e
-        logger.info("handler #{type} for #{queue_name} crashed: #{e.inspect}")
-        logger.info("\n#{e.backtrace.join("\n")}")
+        log("handler #{type} for #{queue_name} crashed: #{e.inspect}")
+        log("\n#{e.backtrace.join("\n")}")
         raise e
       end
 
       def log_starting_info
-        logger.info("Starting StuckQueue with config: #{self.config.inspect}")
+        log("Starting StuckQueue with config: #{self.config.inspect}")
       end
 
       def log_watcher_info(queue_name)
-        logger.info("Lag time for #{queue_name} is #{lag_time(queue_name).inspect} seconds.")
+        log("Lag time for #{queue_name} is #{lag_time(queue_name).inspect} seconds.")
         if triggered_ago = last_triggered(queue_name)
-          logger.info("Last triggered for #{queue_name} is #{triggered_ago.inspect} seconds.")
+          log("Last triggered for #{queue_name} is #{triggered_ago.inspect} seconds.")
         else
-          logger.info("No last trigger found for #{queue_name}.")
+          log("No last trigger found for #{queue_name}.")
         end
       end
 
@@ -147,7 +151,7 @@ module Resque
 
       def log_starting_thread(type)
         interval_keyname = "#{type}_interval".to_sym
-        logger.info("Starting #{type} thread with interval of #{config[interval_keyname]} seconds")
+        log("Starting #{type} thread with interval of #{config[interval_keyname]} seconds")
       end
 
       def read_from_redis(keyname)
@@ -187,7 +191,7 @@ module Resque
             # we want to go through resque jobs, because that's what we're trying to test here:
             # ensure that jobs get executed and the time is updated!
             wait_for_it(:heartbeat_interval)
-            logger.info("Sending heartbeat jobs")
+            log("Sending heartbeat jobs")
             enqueue_jobs
           end
         end
@@ -227,7 +231,7 @@ module Resque
         if time_set
           time_set
         else
-          logger.info("manually refreshing #{queue_name} for :first_time")
+          log("manually refreshing #{queue_name} for :first_time")
           manual_refresh(queue_name, :first_time)
          end.to_i
       end
